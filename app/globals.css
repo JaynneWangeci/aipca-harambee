@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --color-maroon: #7A1F3D;
+  --color-magenta: #C9447A;
+  --color-gold: #E8B84B;
+  --color-cream: #FBF6EE;
+  --color-ink: #2B1118;
+  --color-terracotta-tint: #F4E4D4;
+}
+
+@theme inline {
+  --color-maroon: var(--color-maroon);
+  --color-magenta: var(--color-magenta);
+  --color-gold: var(--color-gold);
+  --color-cream: var(--color-cream);
+  --color-ink: var(--color-ink);
+  --color-terracotta-tint: var(--color-terracotta-tint);
+
+  --font-body: var(--font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+.font-display {
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+.font-mono {
+  font-family: var(--font-body);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* Custom thin scrollbar for constrained containers */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
