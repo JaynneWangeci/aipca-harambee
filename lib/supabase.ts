@@ -1,36 +1,36 @@
 import { createClient } from "@supabase/supabase-js";
 
-function getSupabaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
-  return url;
-}
-
-function getSupabaseAnonKey(): string {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!key) throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  return key;
-}
-
-function getServiceKey(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-  return key;
-}
-
 let client: ReturnType<typeof createClient> | null = null;
 let serviceClient: ReturnType<typeof createClient> | null = null;
 
+function getSupabaseUrl(): string | null {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || null;
+}
+
+function getSupabaseAnonKey(): string | null {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || null;
+}
+
+function getServiceKey(): string | null {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+}
+
 export function getSupabase() {
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
+  if (!url || !key) return null;
   if (!client) {
-    client = createClient(getSupabaseUrl(), getSupabaseAnonKey());
+    client = createClient(url, key);
   }
   return client;
 }
 
 export function getServiceSupabase() {
+  const url = getSupabaseUrl();
+  const key = getServiceKey();
+  if (!url || !key) return null;
   if (!serviceClient) {
-    serviceClient = createClient(getSupabaseUrl(), getServiceKey());
+    serviceClient = createClient(url, key);
   }
   return serviceClient;
 }

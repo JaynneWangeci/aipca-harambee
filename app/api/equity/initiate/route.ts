@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
 
     // Store pending donation
     const supabase = getServiceSupabase();
+    if (!supabase) {
+      throw new Error("Database not configured");
+    }
     const campaign = await supabase
       .from("campaigns")
       .select("id")

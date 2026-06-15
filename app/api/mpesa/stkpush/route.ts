@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Create a pending donation record
     const supabase = getServiceSupabase();
+    if (!supabase) {
+      return NextResponse.json<MpesaStkPushResponse>(
+        { success: false, error: "Database not configured" },
+        { status: 500 },
+      );
+    }
     const campaign = await supabase
       .from("campaigns")
       .select("id")

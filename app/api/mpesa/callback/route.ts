@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
     processedCallbacks.add(stkCallback.CheckoutRequestID);
 
     const supabase = getServiceSupabase();
+    if (!supabase) {
+      return NextResponse.json({ received: true, error: "Database not configured" }, { status: 200 });
+    }
 
     // Extract metadata
     const meta = stkCallback.CallbackMetadata?.Item || [];

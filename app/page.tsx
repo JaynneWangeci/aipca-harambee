@@ -11,8 +11,9 @@ export default function Home() {
 
   useEffect(() => {
     const sb = getSupabase();
+    if (!sb) return;
     async function load() {
-      const { data } = await sb
+      const { data } = await sb!
         .from("campaigns")
         .select("*")
         .eq("slug", "development-fund")

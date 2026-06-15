@@ -13,6 +13,7 @@ function normalizePhone(phone: string): string {
 
 export async function enqueueStkPush(item: QueueItem): Promise<number> {
   const supabase = getServiceSupabase();
+  if (!supabase) throw new Error("Supabase not configured");
   const result = await supabase
     .from("payment_queue")
     .insert({
@@ -29,6 +30,7 @@ export async function enqueueStkPush(item: QueueItem): Promise<number> {
 
 export async function dequeueBatch(limit = 10) {
   const supabase = getServiceSupabase();
+  if (!supabase) return [];
 
   const items = await supabase
     .from("payment_queue")
@@ -44,6 +46,7 @@ export async function dequeueBatch(limit = 10) {
 
 export async function markDone(id: number) {
   const supabase = getServiceSupabase();
+  if (!supabase) return;
   await supabase
     .from("payment_queue")
     .update({ status: "done", processed_at: new Date().toISOString() } as never)
@@ -52,6 +55,7 @@ export async function markDone(id: number) {
 
 export async function markFailed(id: number, error: string) {
   const supabase = getServiceSupabase();
+  if (!supabase) return;
   await supabase
     .from("payment_queue")
     .update({

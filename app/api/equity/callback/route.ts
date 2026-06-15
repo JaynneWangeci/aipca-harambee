@@ -15,6 +15,9 @@ export async function POST(request: NextRequest) {
     processedCallbacks.add(payload.sessionId);
 
     const supabase = getServiceSupabase();
+    if (!supabase) {
+      return NextResponse.json({ received: true, error: "Database not configured" }, { status: 200 });
+    }
     const isSuccess = payload.status === "SUCCESS";
 
     const donation = await supabase

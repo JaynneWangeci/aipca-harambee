@@ -12,7 +12,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 500 },
+    );
+  }
+  const { data, error } = await sb
     .from("donations")
     .select("status, mpesa_receipt")
     .eq("checkout_request_id", checkoutRequestId)

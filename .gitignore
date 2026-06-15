@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# original WhatsApp image at project root (duplicate of public/images/)
+WhatsApp Image*.jpeg
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

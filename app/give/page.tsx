@@ -17,10 +17,11 @@ export default function GivePage() {
 
   useEffect(() => {
     const sb = getSupabase();
+    if (!sb) return;
     async function load() {
-      const { data } = await sb.from("campaigns").select("*").eq("slug", "development-fund").single();
+      const { data } = await sb!.from("campaigns").select("*").eq("slug", "development-fund").single();
       if (data) setCampaign(data as Campaign);
-      const { data: donations } = await sb
+      const { data: donations } = await sb!
         .from("donations").select("*").eq("status", "completed")
         .order("created_at", { ascending: false }).limit(5);
       if (donations) setRecentDonations(donations as Donation[]);
