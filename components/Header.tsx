@@ -15,7 +15,11 @@ const NAV = [
   { href: "/about", label: "About" },
 ];
 
-export default function Header() {
+interface HeaderProps {
+  light?: boolean;
+}
+
+export default function Header({ light }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -30,24 +34,38 @@ export default function Header() {
     setIsOpen(false);
   }, [pathname]);
 
+  const isDark = !light;
+
   return (
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-ink/95 backdrop-blur-md shadow-lg"
-          : "bg-ink/80 backdrop-blur-sm"
+        isDark
+          ? scrolled
+            ? "bg-ink/95 backdrop-blur-md shadow-lg"
+            : "bg-ink/80 backdrop-blur-sm"
+          : "bg-white/95 backdrop-blur-md border-b border-maroon/5"
       }`}
     >
       <div className="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="group flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center group-hover:bg-gold/30 transition-colors">
-            <span className="font-display text-gold text-lg font-bold">A</span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+            isDark ? "bg-gold/20 group-hover:bg-gold/30" : "bg-maroon/10 group-hover:bg-maroon/20"
+          }`}>
+            <span className={`font-display text-lg font-bold ${
+              isDark ? "text-gold" : "text-maroon"
+            }`}>A</span>
           </div>
           <div className="flex flex-col">
-            <span className="font-display text-base sm:text-lg text-cream group-hover:text-gold transition-colors leading-tight">
+            <span className={`font-display text-base sm:text-lg leading-tight transition-colors ${
+              isDark
+                ? "text-cream group-hover:text-gold"
+                : "text-maroon group-hover:text-maroon/70"
+            }`}>
               AIPCA Bahati Cathedral
             </span>
-            <span className="font-mono text-[10px] text-cream/40 tracking-widest uppercase">
+            <span className={`font-mono text-[10px] tracking-widest uppercase ${
+              isDark ? "text-cream/40" : "text-maroon/40"
+            }`}>
               Development Fund
             </span>
           </div>
@@ -60,8 +78,8 @@ export default function Header() {
               href={item.href}
               className={`text-sm font-medium transition-all ${
                 pathname === item.href
-                  ? "text-gold"
-                  : "text-cream/60 hover:text-cream"
+                  ? isDark ? "text-gold" : "text-maroon font-semibold"
+                  : isDark ? "text-cream/60 hover:text-cream" : "text-maroon/50 hover:text-maroon"
               }`}
             >
               {item.label}
@@ -69,7 +87,7 @@ export default function Header() {
           ))}
           <Link
             href="/give"
-            className="px-5 py-2.5 rounded-full bg-gold text-maroon font-display font-semibold text-sm hover:bg-cream hover:scale-105 transition-all shadow-lg shadow-gold/20"
+            className="px-5 py-2.5 rounded-full bg-gold text-maroon font-display font-semibold text-sm hover:bg-maroon hover:text-cream hover:scale-105 transition-all shadow-lg shadow-gold/20"
           >
             Give now
           </Link>
@@ -77,7 +95,7 @@ export default function Header() {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="sm:hidden text-cream p-2"
+          className={`sm:hidden p-2 ${isDark ? "text-cream" : "text-maroon"}`}
           aria-label="Toggle menu"
         >
           {isOpen ? <X size={26} /> : <Menu size={26} />}
@@ -90,7 +108,9 @@ export default function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="sm:hidden overflow-hidden bg-ink border-t border-cream/10"
+            className={`sm:hidden overflow-hidden border-t ${
+              isDark ? "bg-ink border-cream/10" : "bg-white border-maroon/10"
+            }`}
           >
             <div className="px-6 py-5 flex flex-col gap-3">
               {NAV.map((item) => (
@@ -99,8 +119,8 @@ export default function Header() {
                   href={item.href}
                   className={`text-base font-medium transition-colors py-2 ${
                     pathname === item.href
-                      ? "text-gold"
-                      : "text-cream/70 hover:text-cream"
+                      ? isDark ? "text-gold" : "text-maroon"
+                      : isDark ? "text-cream/70 hover:text-cream" : "text-maroon/60 hover:text-maroon"
                   }`}
                 >
                   {item.label}
@@ -108,7 +128,7 @@ export default function Header() {
               ))}
               <Link
                 href="/give"
-                className="mt-3 px-5 py-3 rounded-full bg-gold text-maroon font-display font-semibold text-base text-center hover:bg-cream transition-colors"
+                className="mt-3 px-5 py-3 rounded-full bg-gold text-maroon font-display font-semibold text-base text-center hover:bg-maroon hover:text-cream transition-colors"
               >
                 Give now — support the fund
               </Link>
