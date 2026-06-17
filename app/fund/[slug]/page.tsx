@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { Smartphone, Target } from "lucide-react";
 import CathedralBackground from "@/components/CathedralBackground";
 import CampaignHero from "@/components/CampaignHero";
 import DonorWall from "@/components/DonorWall";
 import TreasurerSignatories from "@/components/TreasurerSignatories";
 import BankDetails from "@/components/BankDetails";
 import DonationForm from "@/components/DonationForm";
+import PledgeForm from "@/components/PledgeForm";
 import Footer from "@/components/Footer";
 import type { CampaignApiResponse, Donation } from "@/types";
 
@@ -19,6 +21,7 @@ export default function FundPage({ params }: FundPageProps) {
   const [campaign, setCampaign] = useState<CampaignApiResponse["campaign"]>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [slug, setSlug] = useState("");
+  const [tab, setTab] = useState<"give" | "pledge">("give");
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
@@ -69,13 +72,43 @@ export default function FundPage({ params }: FundPageProps) {
                 className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1 custom-scroll"
               >
                 <h2 className="text-xl text-cream font-bold mb-1">
-                  Give to the <span className="italic text-gold">{title}</span>
+                  {tab === "give"
+                    ? `Give to the ${title}`
+                    : `Pledge to the ${title}`}
                 </h2>
                 <p className="text-cream/60 text-xs sm:text-sm mb-4">
-                  {description}
+                  {tab === "give"
+                    ? "Give now via M-Pesa or bank transfer."
+                    : "Promise an amount now, send it later."}
                 </p>
 
-                <DonationForm />
+                {/* Tab toggle */}
+                <div className="flex rounded-xl bg-cream/10 border border-cream/10 p-1 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setTab("give")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      tab === "give"
+                        ? "bg-gold text-maroon"
+                        : "text-cream/60 hover:text-cream"
+                    }`}
+                  >
+                    <Smartphone size={16} /> Give Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab("pledge")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      tab === "pledge"
+                        ? "bg-gold text-maroon"
+                        : "text-cream/60 hover:text-cream"
+                    }`}
+                  >
+                    <Target size={16} /> Pledge
+                  </button>
+                </div>
+
+                {tab === "give" ? <DonationForm /> : <PledgeForm />}
 
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}

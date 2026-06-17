@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       status: "pending",
       message: body.message || null,
       checkout_request_id: checkoutRequestId,
+      honored_member_id: body.honored_member_id || null,
     } as never);
 
     if (insertError) {

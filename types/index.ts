@@ -52,6 +52,7 @@ export interface MpesaStkPushRequest {
   phone: string;
   donor_name?: string;
   message?: string;
+  honored_member_id?: string;
 }
 
 export interface MpesaStkPushResponse {
@@ -83,6 +84,7 @@ export interface EquityInitiateRequest {
   donor_name?: string;
   email?: string;
   message?: string;
+  honored_member_id?: string;
 }
 
 export interface EquityInitiateResponse {

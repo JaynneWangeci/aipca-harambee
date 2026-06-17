@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import AmountSelector from "@/components/AmountSelector";
 import PaymentMethodSelector from "@/components/PaymentMethodSelector";
+import MemberDropdown from "@/components/MemberDropdown";
 import SuccessScreen from "@/components/SuccessScreen";
 import type { DonationPollResponse } from "@/types";
 
@@ -26,6 +27,8 @@ export default function DonationForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [honoredMemberId, setHonoredMemberId] = useState("");
+  const [honoredMemberName, setHonoredMemberName] = useState("");
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const finalAmount = customAmount ? Number(customAmount) : amount;
@@ -76,6 +79,7 @@ export default function DonationForm() {
             phone,
             donor_name: name || undefined,
             message: message || undefined,
+            honored_member_id: honoredMemberId || undefined,
           }),
         });
         const data = await res.json();
@@ -93,6 +97,7 @@ export default function DonationForm() {
             amount: finalAmount,
             donor_name: name || undefined,
             message: message || undefined,
+            honored_member_id: honoredMemberId || undefined,
           }),
         });
         const data = await res.json();
@@ -119,6 +124,8 @@ export default function DonationForm() {
     setStatus("idle");
     setErrorMsg("");
     setReceiptNumber("");
+    setHonoredMemberId("");
+    setHonoredMemberName("");
   }
 
   if (step === "success") {
@@ -189,6 +196,13 @@ export default function DonationForm() {
                 className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm"
               />
             </div>
+            <MemberDropdown
+              value={honoredMemberId}
+              onChange={(id, memberName) => {
+                setHonoredMemberId(id);
+                setHonoredMemberName(memberName);
+              }}
+            />
             <PaymentMethodSelector
               method={method}
               onChange={setMethod}
