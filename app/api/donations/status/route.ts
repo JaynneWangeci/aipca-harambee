@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase } from "@/lib/supabase";
+import { getServiceSupabase } from "@/lib/supabase";
 import type { DonationPollResponse } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -12,29 +12,32 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const sb = getSupabase();
+  const sb = getServiceSupabase();
   if (!sb) {
     return NextResponse.json(
       { error: "Database not configured" },
       { status: 500 },
     );
   }
-  const { data, error } = await sb
+
+  const { data: raw } = await sb
     .from("donations")
-    .select("status, mpesa_receipt")
+    .select("status, mpesa_receipt, receipt_number")
     .eq("checkout_request_id", checkoutRequestId)
     .single();
 
-  if (error || !data) {
+  const d = raw as { status: string; mpesa_receipt: string | null; receipt_number: string | null } | null;
+
+  if (!d) {
     return NextResponse.json(
       { error: "Donation not found" },
       { status: 404 },
     );
   }
 
-  const d = data as { status: string; mpesa_receipt: string | null };
   return NextResponse.json<DonationPollResponse>({
     status: d.status as DonationPollResponse["status"],
     mpesa_receipt: d.mpesa_receipt || undefined,
+    receipt_number: d.receipt_number || undefined,
   });
 }

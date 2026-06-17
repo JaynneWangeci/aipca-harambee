@@ -1,8 +1,8 @@
-const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY!;
-const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET!;
-const SHORTCODE = process.env.MPESA_SHORTCODE!;
-const PASSKEY = process.env.MPESA_PASSKEY!;
-const CALLBACK_URL = process.env.MPESA_CALLBACK_URL!;
+const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY;
+const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET;
+const SHORTCODE = process.env.MPESA_SHORTCODE;
+const PASSKEY = process.env.MPESA_PASSKEY;
+const CALLBACK_URL = process.env.MPESA_CALLBACK_URL;
 const ENV = process.env.MPESA_ENV || "sandbox";
 
 const BASE_URL =
@@ -12,7 +12,12 @@ const BASE_URL =
 
 let tokenCache: { token: string; expiresAt: number } | null = null;
 
-export async function getOAuthToken(): Promise<string> {
+export function isDarajaConfigured(): boolean {
+  return !!(CONSUMER_KEY && CONSUMER_SECRET && SHORTCODE && PASSKEY && CALLBACK_URL);
+}
+
+export async function getOAuthToken(): Promise<string | null> {
+  if (!CONSUMER_KEY || !CONSUMER_SECRET) return null;
   if (tokenCache && tokenCache.expiresAt > Date.now()) {
     return tokenCache.token;
   }
@@ -24,7 +29,8 @@ export async function getOAuthToken(): Promise<string> {
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to get OAuth token: ${res.status} ${await res.text()}`);
+    console.error("Failed to get OAuth token:", res.status, await res.text());
+    return null;
   }
 
   const data = await res.json();
@@ -39,8 +45,11 @@ export async function stkPush(
   amount: number,
   phone: string,
   checkoutRequestId?: string,
-): Promise<{ CheckoutRequestID: string; ResponseCode: string; ResponseDescription: string }> {
+): Promise<{ CheckoutRequestID: string; ResponseCode: string; ResponseDescription: string } | null> {
+  if (!isDarajaConfigured()) return null;
   const token = await getOAuthToken();
+  if (!token) return null;
+
   const timestamp = new Date()
     .toISOString()
     .replace(/[-:T.Z]/g, "")
@@ -72,7 +81,8 @@ export async function stkPush(
   });
 
   if (!res.ok) {
-    throw new Error(`STK Push failed: ${res.status} ${await res.text()}`);
+    console.error("STK Push failed:", res.status, await res.text());
+    return null;
   }
 
   return res.json();

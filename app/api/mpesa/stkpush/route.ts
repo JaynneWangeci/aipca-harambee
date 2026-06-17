@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stkPush } from "@/lib/daraja";
+import { stkPush, isDarajaConfigured } from "@/lib/daraja";
 import { getServiceSupabase } from "@/lib/supabase";
 import type { MpesaStkPushRequest, MpesaStkPushResponse } from "@/types";
 
-const RATE_LIMIT_WINDOW = 60_000; // 60s
-const phoneTimestamps = new Map<string, number>();
+const RATE_LIMIT_WINDOW = 60_000;
 
 function maskPhone(phone: string): string {
   const cleaned = phone.replace(/^0+/, "254").replace(/^\+/, "");
@@ -14,6 +13,13 @@ function maskPhone(phone: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isDarajaConfigured()) {
+      return NextResponse.json<MpesaStkPushResponse>(
+        { success: false, error: "M-Pesa payments are not configured" },
+        { status: 503 },
+      );
+    }
+
     const body: MpesaStkPushRequest = await request.json();
 
     if (!body.amount || body.amount <= 0) {
@@ -30,18 +36,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limit: prevent duplicate STK pushes to same phone within 60s
-    const normalizedPhone = body.phone.replace(/^0+/, "254").replace(/^\+/, "");
-    const lastPush = phoneTimestamps.get(normalizedPhone);
-    if (lastPush && Date.now() - lastPush < RATE_LIMIT_WINDOW) {
-      return NextResponse.json<MpesaStkPushResponse>(
-        { success: false, error: "Please wait before requesting another prompt" },
-        { status: 429 },
-      );
-    }
-    phoneTimestamps.set(normalizedPhone, Date.now());
-
-    // Create a pending donation record
     const supabase = getServiceSupabase();
     if (!supabase) {
       return NextResponse.json<MpesaStkPushResponse>(
@@ -49,6 +43,25 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    const normalizedPhone = body.phone.replace(/^0+/, "254").replace(/^\+/, "");
+
+    // DB-level rate limit: check for pending donations from same phone within window
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW).toISOString();
+    const { count: recentCount } = await supabase
+      .from("donations")
+      .select("*", { count: "exact", head: true })
+      .eq("phone_masked", maskPhone(body.phone))
+      .eq("status", "pending")
+      .gte("created_at", windowStart);
+
+    if (recentCount && recentCount > 0) {
+      return NextResponse.json<MpesaStkPushResponse>(
+        { success: false, error: "Please wait before requesting another prompt" },
+        { status: 429 },
+      );
+    }
+
     const campaign = await supabase
       .from("campaigns")
       .select("id")
@@ -73,8 +86,14 @@ export async function POST(request: NextRequest) {
       console.error("Failed to insert pending donation:", insertError);
     }
 
-    // Send STK push
     const result = await stkPush(body.amount, body.phone, checkoutRequestId);
+
+    if (!result) {
+      return NextResponse.json<MpesaStkPushResponse>(
+        { success: false, error: "Payment service unavailable" },
+        { status: 502 },
+      );
+    }
 
     if (result.ResponseCode === "0") {
       return NextResponse.json<MpesaStkPushResponse>({

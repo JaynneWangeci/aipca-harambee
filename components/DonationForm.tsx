@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import type { DonationPollResponse } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Smartphone, Building2, Loader2 } from "lucide-react";
 
@@ -20,6 +21,7 @@ export default function DonationForm() {
   const [method, setMethod] = useState<Method>("mpesa");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [receiptNumber, setReceiptNumber] = useState("");
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const finalAmount = customAmount ? Number(customAmount) : amount;
@@ -42,10 +44,12 @@ export default function DonationForm() {
           );
           const data = await res.json();
 
-          if (data.status === "completed") {
+          const pollData = data as DonationPollResponse;
+          if (pollData.status === "completed") {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            setReceiptNumber(pollData.receipt_number || pollData.mpesa_receipt || "");
             setStatus("success");
-          } else if (data.status === "failed") {
+          } else if (pollData.status === "failed") {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             setStatus("error");
             setErrorMsg("The payment was declined. Please try again.");
@@ -131,12 +135,18 @@ export default function DonationForm() {
           Your gift of KES {finalAmount?.toLocaleString()} has been received.
           May God bless you abundantly for sowing into His house.
         </p>
+        {receiptNumber && (
+          <p className="text-cream/50 text-[10px] font-mono mt-2">
+            Receipt: {receiptNumber}
+          </p>
+        )}
         <button
           onClick={() => {
             setStatus("idle");
             setName("");
             setPhone("");
             setMessage("");
+            setReceiptNumber("");
           }}
           className="mt-6 text-sm underline text-gold hover:text-cream transition-colors"
         >

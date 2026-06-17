@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Smartphone, Building2, ArrowLeft } from "lucide-react";
+import { Shield, Smartphone, Building2, ArrowLeft, Banknote, UserCheck } from "lucide-react";
 import Link from "next/link";
 import DonationForm from "@/components/DonationForm";
 import LiveGivingTicker from "@/components/LiveGivingTicker";
@@ -59,6 +59,23 @@ export default function GivePage() {
                 Your gift powers sanctuary, fellowship hall, ministries, and grounds — all at once.
               </p>
               <DonationForm />
+
+              {/* Treasurer signatories */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-4 bg-cream/10 rounded-2xl p-4 border border-cream/10"
+              >
+                <h3 className="font-display text-gold text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <UserCheck size={13} /> Treasurer Signatories
+                </h3>
+                <div className="space-y-1 text-cream/70 text-[11px]">
+                  <p><span className="text-cream">Johnson Kamau</span> — Treasurer</p>
+                  <p><span className="text-cream">George Kibia</span> — Vice Treasurer</p>
+                  <p><span className="text-cream">Maria Goretti Njenga</span> — Development Treasurer</p>
+                </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -68,6 +85,20 @@ export default function GivePage() {
               className="space-y-3"
             >
               <LiveGivingTicker entries={recentDonations} />
+
+              {/* Bank Details */}
+              <div className="bg-cream/10 rounded-2xl p-4 border border-cream/10 space-y-2">
+                <h3 className="font-display text-gold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Banknote size={13} /> Direct Bank Transfer
+                </h3>
+                <div className="space-y-1 text-cream/60 text-[11px]">
+                  <p><span className="text-cream/80">Bank:</span> Equity Bank</p>
+                  <p><span className="text-cream/80">Account:</span> 1840291670724</p>
+                  <p><span className="text-cream/80">Name:</span> AIPCA Bahati Cathedral Development Fund</p>
+                  <p className="mt-2 text-cream/40 italic">Send MPESA to Paybill 247247, Account: BAHATI</p>
+                </div>
+              </div>
+
               <div className="bg-cream/10 rounded-2xl p-4 border border-cream/10 space-y-3">
                 {[
                   { icon: Shield, text: "All transactions processed through Safaricom M-Pesa and Equity Bank. No payment data passes through this website." },
