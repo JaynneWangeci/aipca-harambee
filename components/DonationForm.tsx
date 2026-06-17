@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import type { DonationPollResponse } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Smartphone, Building2, Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import AmountSelector from "@/components/AmountSelector";
+import PaymentMethodSelector from "@/components/PaymentMethodSelector";
+import SuccessScreen from "@/components/SuccessScreen";
+import type { DonationPollResponse } from "@/types";
 
-const AMOUNTS = [500, 1000, 2500, 5000, 10000];
 const POLL_INTERVAL = 3000;
 const POLL_TIMEOUT = 60000;
 
-type Status = "idle" | "processing" | "success" | "error";
+type Step = "amount" | "details" | "confirm" | "processing" | "success";
 type Method = "mpesa" | "bank";
+type Status = "idle" | "error";
 
 export default function DonationForm() {
+  const [step, setStep] = useState<Step>("amount");
   const [amount, setAmount] = useState<number | null>(1000);
   const [customAmount, setCustomAmount] = useState("");
   const [name, setName] = useState("");
@@ -29,43 +33,37 @@ export default function DonationForm() {
   const pollDonationStatus = useCallback(
     (checkoutRequestId: string) => {
       const startTime = Date.now();
-
       pollTimerRef.current = setInterval(async () => {
         if (Date.now() - startTime > POLL_TIMEOUT) {
           if (pollTimerRef.current) clearInterval(pollTimerRef.current);
           setStatus("error");
-          setErrorMsg("The payment is taking longer than expected. Please check your M-Pesa messages for a confirmation.");
+          setErrorMsg("The payment is taking longer than expected. Please check your M-Pesa messages.");
           return;
         }
-
         try {
           const res = await fetch(
             `/api/donations/status?checkoutRequestId=${encodeURIComponent(checkoutRequestId)}`,
           );
-          const data = await res.json();
-
-          const pollData = data as DonationPollResponse;
-          if (pollData.status === "completed") {
+          const data: DonationPollResponse = await res.json();
+          if (data.status === "completed") {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-            setReceiptNumber(pollData.receipt_number || pollData.mpesa_receipt || "");
-            setStatus("success");
-          } else if (pollData.status === "failed") {
+            setReceiptNumber(data.receipt_number || data.mpesa_receipt || "");
+            setStep("success");
+          } else if (data.status === "failed") {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             setStatus("error");
             setErrorMsg("The payment was declined. Please try again.");
           }
-        } catch {
-          // Continue polling
-        }
+        } catch {}
       }, POLL_INTERVAL);
     },
     [],
   );
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleConfirm() {
     if (!finalAmount || finalAmount <= 0) return;
-    setStatus("processing");
+    setStep("processing");
+    setStatus("idle");
     setErrorMsg("");
 
     try {
@@ -80,9 +78,7 @@ export default function DonationForm() {
             message: message || undefined,
           }),
         });
-
         const data = await res.json();
-
         if (data.success && data.checkoutRequestId) {
           pollDonationStatus(data.checkoutRequestId);
         } else {
@@ -99,9 +95,7 @@ export default function DonationForm() {
             message: message || undefined,
           }),
         });
-
         const data = await res.json();
-
         if (data.success && data.redirectUrl) {
           window.location.href = data.redirectUrl;
         } else {
@@ -115,220 +109,213 @@ export default function DonationForm() {
     }
   }
 
-  if (status === "success") {
+  function reset() {
+    setStep("amount");
+    setAmount(1000);
+    setCustomAmount("");
+    setName("");
+    setPhone("");
+    setMessage("");
+    setStatus("idle");
+    setErrorMsg("");
+    setReceiptNumber("");
+  }
+
+  if (step === "success") {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="rounded-2xl bg-maroon text-cream p-8 text-center"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
-          className="mx-auto mb-4 w-14 h-14 rounded-full bg-gold flex items-center justify-center"
-        >
-          <Check className="text-maroon" size={28} />
-        </motion.div>
-        <h3 className="font-display text-2xl mb-2">Asante sana, {name || "friend"}!</h3>
-        <p className="text-cream/80 text-sm max-w-xs mx-auto">
-          Your gift of KES {finalAmount?.toLocaleString()} has been received.
-          May God bless you abundantly for sowing into His house.
-        </p>
-        {receiptNumber && (
-          <p className="text-cream/50 text-[10px] font-mono mt-2">
-            Receipt: {receiptNumber}
-          </p>
-        )}
-        <button
-          onClick={() => {
-            setStatus("idle");
-            setName("");
-            setPhone("");
-            setMessage("");
-            setReceiptNumber("");
-          }}
-          className="mt-6 text-sm underline text-gold hover:text-cream transition-colors"
-        >
-          Give again
-        </button>
-      </motion.div>
+      <SuccessScreen
+        amount={finalAmount || 0}
+        name={name}
+        receiptNumber={receiptNumber}
+        onReset={reset}
+      />
     );
   }
 
+  const canContinue = finalAmount && finalAmount > 0;
+
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (step === "amount") setStep("details");
+        else if (step === "details") setStep("confirm");
+        else if (step === "confirm") handleConfirm();
+      }}
       className="rounded-2xl bg-white border border-maroon/10 p-6 sm:p-8 space-y-6"
     >
-      <div>
-        <h3 className="font-display text-2xl text-maroon mb-1">Give toward the fund</h3>
-        <p className="text-sm text-ink/60">Every gift, of any size, builds something lasting.</p>
-      </div>
+      <h3 className="font-display text-2xl text-maroon mb-1">
+        {step === "amount" && "Choose your gift"}
+        {step === "details" && "Your details"}
+        {step === "confirm" && "Confirm your gift"}
+        {step === "processing" && "Processing…"}
+      </h3>
 
-      {/* Amount chips */}
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-ink/50 mb-3 font-mono">
-          Choose an amount (KES)
-        </label>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {AMOUNTS.map((amt) => (
-            <motion.button
-              key={amt}
-              type="button"
-              whileTap={{ scale: 0.94 }}
-              onClick={() => {
-                setAmount(amt);
-                setCustomAmount("");
-              }}
-              className={`py-3 rounded-xl text-sm font-semibold font-mono border-2 transition-colors ${
-                amount === amt && !customAmount
-                  ? "bg-maroon text-cream border-maroon"
-                  : "bg-cream text-maroon border-maroon/15 hover:border-maroon/40"
-              }`}
-            >
-              {amt.toLocaleString()}
-            </motion.button>
-          ))}
-          <input
-            type="number"
-            min={1}
-            placeholder="Custom"
-            value={customAmount}
-            onChange={(e) => {
-              setCustomAmount(e.target.value);
-              setAmount(null);
-            }}
-            className={`py-3 px-3 rounded-xl text-sm font-semibold font-mono border-2 bg-cream text-maroon placeholder:text-maroon/40 focus:outline-none transition-colors ${
-              customAmount ? "border-maroon" : "border-maroon/15"
-            }`}
-          />
-        </div>
-      </div>
+      <AnimatePresence mode="wait">
+        {step === "amount" && (
+          <motion.div
+            key="amount"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <AmountSelector
+              amount={amount}
+              customAmount={customAmount}
+              onSelect={setAmount}
+              onCustomChange={setCustomAmount}
+            />
+          </motion.div>
+        )}
 
-      {/* Name + phone */}
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-ink/50 mb-1.5 font-mono">
-            Your name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Mary Wanjiku"
-            className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm"
-          />
-        </div>
-
-        {/* Payment method toggle */}
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-ink/50 mb-1.5 font-mono">
-            Payment method
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMethod("mpesa")}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-colors ${
-                method === "mpesa"
-                  ? "bg-maroon text-cream border-maroon"
-                  : "bg-cream text-maroon border-maroon/15 hover:border-maroon/40"
-              }`}
-            >
-              <Smartphone size={16} /> M-Pesa
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("bank")}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-colors ${
-                method === "bank"
-                  ? "bg-maroon text-cream border-maroon"
-                  : "bg-cream text-maroon border-maroon/15 hover:border-maroon/40"
-              }`}
-            >
-              <Building2 size={16} /> Bank / Card
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {method === "mpesa" ? (
-            <motion.div
-              key="mpesa"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-            >
+        {step === "details" && (
+          <motion.div
+            key="details"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <div>
               <label className="block text-xs uppercase tracking-wider text-ink/50 mb-1.5 font-mono">
-                M-Pesa phone number
+                Your name
               </label>
               <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07XX XXX XXX"
-                className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm font-mono"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Mary Wanjiku"
+                className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm"
               />
-              <p className="mt-1.5 text-xs text-ink/40">
-                You&apos;ll receive an STK prompt on your phone to complete payment.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="bank"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="text-sm text-ink/60 bg-terracotta-tint rounded-xl p-4"
-            >
-              You&apos;ll be redirected to Equity&apos;s secure payment page to complete
-              this gift via bank transfer or card.
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Optional message */}
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-ink/50 mb-1.5 font-mono">
-          Message (optional)
-        </label>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="With thanksgiving for..."
-          rows={2}
-          className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm resize-none"
-        />
-      </div>
-
-      {status === "error" && (
-        <motion.p
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-red-600 text-sm text-center bg-red-50 rounded-xl p-3"
-        >
-          {errorMsg}
-        </motion.p>
-      )}
-
-      <motion.button
-        type="submit"
-        whileTap={{ scale: 0.98 }}
-        disabled={status === "processing" || !finalAmount}
-        className="w-full py-4 rounded-xl bg-gold text-maroon font-display font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
-      >
-        {status === "processing" ? (
-          <>
-            <Loader2 className="animate-spin" size={20} />
-            {method === "mpesa" ? "Sending prompt to your phone…" : "Redirecting…"}
-          </>
-        ) : (
-          `Give KES ${finalAmount ? finalAmount.toLocaleString() : "0"}`
+            </div>
+            <PaymentMethodSelector
+              method={method}
+              onChange={setMethod}
+              phone={phone}
+              onPhoneChange={setPhone}
+            />
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-ink/50 mb-1.5 font-mono">
+                Message (optional)
+              </label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="With thanksgiving for…"
+                rows={2}
+                className="w-full px-4 py-3 rounded-xl border-2 border-maroon/15 bg-cream focus:border-maroon focus:outline-none text-sm resize-none"
+              />
+            </div>
+          </motion.div>
         )}
-      </motion.button>
+
+        {step === "confirm" && (
+          <motion.div
+            key="confirm"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-3"
+          >
+            <div className="bg-cream rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-ink/60">Amount</span>
+                <span className="font-mono font-semibold text-maroon">
+                  KES {finalAmount?.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink/60">Donor</span>
+                <span>{name || "Anonymous"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink/60">Method</span>
+                <span className="font-medium">{method === "mpesa" ? "M-Pesa" : "Bank / Card"}</span>
+              </div>
+              {method === "mpesa" && (
+                <div className="flex justify-between">
+                  <span className="text-ink/60">Phone</span>
+                  <span className="font-mono">
+                    {phone.replace(/\d(?=\d{4})/g, "*")}
+                  </span>
+                </div>
+              )}
+            </div>
+            {status === "error" && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-red-600 text-sm text-center bg-red-50 rounded-xl p-3"
+              >
+                {errorMsg}
+              </motion.p>
+            )}
+            <p className="text-[11px] text-ink/40 text-center">
+              By clicking Confirm, you agree to our terms. No payment data is stored on this website.
+            </p>
+          </motion.div>
+        )}
+
+        {step === "processing" && (
+          <motion.div
+            key="processing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <Loader2 className="animate-spin mx-auto mb-4 text-maroon" size={32} />
+            <p className="text-ink/60 text-sm">
+              {method === "mpesa"
+                ? "Sending STK prompt to your phone…"
+                : "Redirecting to secure payment page…"}
+            </p>
+            {status === "error" && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-red-600 text-sm mt-4 bg-red-50 rounded-xl p-3"
+              >
+                {errorMsg}
+              </motion.p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {step !== "processing" && (
+        <div className="flex gap-3">
+          {step !== "amount" && (
+            <button
+              type="button"
+              onClick={() => {
+                if (step === "details") setStep("amount");
+                else if (step === "confirm") setStep("details");
+              }}
+              className="flex-1 py-3 rounded-xl border-2 border-maroon/15 text-maroon font-medium text-sm flex items-center justify-center gap-1 hover:bg-cream transition-colors"
+            >
+              <ArrowLeft size={16} /> Back
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={!canContinue}
+            className="flex-1 py-4 rounded-xl bg-gold text-maroon font-display font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
+          >
+            {step === "amount" && (
+              <>
+                Continue <ArrowRight size={18} />
+              </>
+            )}
+            {step === "details" && (
+              <>
+                Review gift <ArrowRight size={18} />
+              </>
+            )}
+            {step === "confirm" && "Confirm & Give"}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

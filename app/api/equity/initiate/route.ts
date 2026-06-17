@@ -7,8 +7,23 @@ const JENGA_BASE =
     ? "https://api.equitybankgroup.com"
     : "https://api-uat.equitybankgroup.com";
 
+function isJengaConfigured(): boolean {
+  return !!(
+    process.env.JENGA_MERCHANT_CODE &&
+    process.env.JENGA_CONSUMER_SECRET &&
+    process.env.JENGA_API_KEY
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
+    if (!isJengaConfigured()) {
+      return NextResponse.json<EquityInitiateResponse>(
+        { success: false, error: "Bank payments are not configured" },
+        { status: 503 },
+      );
+    }
+
     const body: EquityInitiateRequest = await request.json();
 
     if (!body.amount || body.amount <= 0) {
@@ -18,7 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Jenga auth token
     const authRes = await fetch(`${JENGA_BASE}/authentication/api/v3/authenticate/merchant`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,7 +49,6 @@ export async function POST(request: NextRequest) {
     const authData = await authRes.json();
     const accessToken = authData.accessToken;
 
-    // Create payment session
     const paymentRes = await fetch(
       `${JENGA_BASE}/transaction/api/v3/checkout/mobile/send`,
       {
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
           currency: "KES",
           amount: Math.round(body.amount),
           description: "AIPCA Harambee Donation",
-          callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/equity/callback`,
+          callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/equity/callback`,
           customerName: body.donor_name || "Anonymous",
           customerEmail: body.email || "",
         }),
@@ -64,27 +77,25 @@ export async function POST(request: NextRequest) {
 
     const paymentData = await paymentRes.json();
 
-    // Store pending donation
     const supabase = getServiceSupabase();
-    if (!supabase) {
-      throw new Error("Database not configured");
-    }
-    const campaign = await supabase
-      .from("campaigns")
-      .select("id")
-      .eq("slug", "development-fund")
-      .single()
-      .then((r) => r.data as { id: string } | null);
+    if (supabase) {
+      const campaign = await supabase
+        .from("campaigns")
+        .select("id")
+        .eq("slug", "development-fund")
+        .single()
+        .then((r) => r.data as { id: string } | null);
 
-    await supabase.from("donations").insert({
-      campaign_id: campaign?.id || "00000000-0000-0000-0000-000000000000",
-      donor_name: body.donor_name || "Anonymous",
-      amount: body.amount,
-      method: "bank",
-      status: "pending",
-      message: body.message || null,
-      checkout_request_id: paymentData.sessionId,
-    } as never);
+      await supabase.from("donations").insert({
+        campaign_id: campaign?.id || "00000000-0000-0000-0000-000000000000",
+        donor_name: body.donor_name || "Anonymous",
+        amount: body.amount,
+        method: "bank",
+        status: "pending",
+        message: body.message || null,
+        checkout_request_id: paymentData.sessionId,
+      } as never);
+    }
 
     return NextResponse.json<EquityInitiateResponse>({
       success: true,
